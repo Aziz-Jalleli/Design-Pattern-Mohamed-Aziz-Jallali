@@ -12,6 +12,7 @@ public class GameWorldFlyweight {
 
 
     public void generateEnemies(int count) {
+        int j =0;
         for (int i = 0; i < count; i++) {
             String type = TYPES[random.nextInt(TYPES.length)];
             EnemySprite sprite = EnemySpriteFactory.getSprite(type);
