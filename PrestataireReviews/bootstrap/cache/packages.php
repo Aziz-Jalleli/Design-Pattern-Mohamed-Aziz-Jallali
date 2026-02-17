@@ -20,6 +20,13 @@
       0 => 'Laravel\\Tinker\\TinkerServiceProvider',
     ),
   ),
+  'mll-lab/laravel-graphql-playground' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'MLL\\GraphQLPlayground\\GraphQLPlaygroundServiceProvider',
+    ),
+  ),
   'nesbot/carbon' => 
   array (
     'providers' => 
