@@ -1,0 +1,262 @@
+scalar DateTime @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+
+scalar Date @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\Date")
+
+type Query {
+    "Get a single review by ID"
+    review(id: ID! @eq): Review @find
+
+    "Get all reviews with optional filters"
+    reviews(
+        prestataire_id: ID @eq
+        is_verified: Boolean @eq
+        orderBy: [ReviewOrderByClause!] @orderBy
+    ): [Review!]! @all
+
+    "Get paginated reviews"
+    reviewsPaginated(
+        prestataire_id: ID @where(operator: "=")
+        is_verified: Boolean @where(operator: "=")
+        min_rating: Float
+        first: Int! = 15
+        page: Int
+    ): ReviewPaginator!
+
+    "Get reviews for a specific prestataire with statistics"
+    prestataireReviews(
+        prestataire_id: ID!
+        limit: Int = 15
+        page: Int = 1
+    ): PrestataireReviewsResponse!
+
+    "Get review statistics for a prestataire"
+    reviewStatistics(prestataire_id: ID!): ReviewStatistics!
+
+    "Get top-rated prestataires with review data"
+    topRatedPrestataires(limit: Int = 10): [PrestataireWithReviews!]!
+
+    "Get a single review reply"
+    reviewReply(id: ID! @eq): ReviewReply @find
+
+    "Get all replies for a review"
+    reviewReplies(review_id: ID! @eq): [ReviewReply!]! @all
+}
+
+type Mutation {
+    "Create a new review"
+    createReview(input: CreateReviewInput!): ReviewPayload!
+
+    "Update an existing review"
+    updateReview(id: ID!, input: UpdateReviewInput!): ReviewPayload!
+
+    "Delete a review (soft delete)"
+    deleteReview(id: ID!): DeleteReviewPayload!
+
+    "Mark a review as helpful"
+    markReviewAsHelpful(id: ID!): ReviewPayload!
+
+    "Create a reply to a review"
+    createReviewReply(input: CreateReviewReplyInput!): ReviewReplyPayload!
+
+    "Update a review reply"
+    updateReviewReply(id: ID!, input: UpdateReviewReplyInput!): ReviewReplyPayload!
+
+    "Delete a review reply"
+    deleteReviewReply(id: ID!): DeleteReviewReplyPayload!
+}
+
+"Review type"
+type Review {
+    id: ID!
+    prestataire_id: ID!
+    user_name: String!
+    rating: Float!
+    comment: String!
+    service_type: String
+    is_verified: Boolean!
+    helpful_count: Int!
+    created_at: DateTime!
+    updated_at: DateTime!
+    time_ago: String!
+    
+    "Get prestataire data from Spring Boot service"
+    prestataire: Prestataire
+    
+    "Get all replies for this review"
+    replies: [ReviewReply!]! @hasMany
+}
+
+"Review reply type"
+type ReviewReply {
+    id: ID!
+    review_id: ID!
+    user_name: String!
+    comment: String!
+    is_prestataire_reply: Boolean!
+    created_at: DateTime!
+    updated_at: DateTime!
+    time_ago: String!
+    
+    "Get parent review"
+    review: Review! @belongsTo
+}
+
+"Prestataire type from Spring Boot service"
+type Prestataire {
+    id: ID!
+    nom: String!
+    telephone: String
+    note: Float
+    experience: Int
+    disponible: Boolean!
+    localisation: Localisation
+}
+
+"Localisation type"
+type Localisation {
+    id: ID!
+    ville: String
+    region: String
+    code_postal: String
+}
+
+"Prestataire with review statistics"
+type PrestataireWithReviews {
+    id: ID!
+    nom: String!
+    telephone: String
+    note: Float
+    experience: Int
+    disponible: Boolean!
+    review_statistics: ReviewStatistics!
+}
+
+"Review statistics for a prestataire"
+type ReviewStatistics {
+    total_reviews: Int!
+    average_rating: Float!
+    rating_distribution: RatingDistribution!
+    verified_reviews: Int!
+    recent_reviews: Int!
+}
+
+"Rating distribution breakdown"
+type RatingDistribution {
+    five_stars: Int!
+    four_stars: Int!
+    three_stars: Int!
+    two_stars: Int!
+    one_star: Int!
+}
+
+"Response for prestataire reviews query"
+type PrestataireReviewsResponse {
+    reviews: [Review!]!
+    pagination: PaginationInfo!
+    statistics: ReviewStatistics!
+}
+
+"Pagination information"
+type PaginationInfo {
+    total: Int!
+    per_page: Int!
+    current_page: Int!
+    last_page: Int!
+    has_more_pages: Boolean!
+}
+
+"Paginated reviews"
+type ReviewPaginator {
+    data: [Review!]!
+    paginatorInfo: PaginatorInfo!
+}
+
+"Standard paginator info"
+type PaginatorInfo {
+    count: Int!
+    currentPage: Int!
+    firstItem: Int
+    hasMorePages: Boolean!
+    lastItem: Int
+    lastPage: Int!
+    perPage: Int!
+    total: Int!
+}
+
+"Input for creating a review"
+input CreateReviewInput {
+    prestataire_id: ID!
+    user_name: String! @rules(apply: ["required", "string", "max:255"])
+    user_email: String! @rules(apply: ["required", "email", "max:255"])
+    rating: Float! @rules(apply: ["required", "numeric", "min:1", "max:5"])
+    comment: String! @rules(apply: ["required", "string", "min:10"])
+    service_type: String @rules(apply: ["string", "max:255"])
+    is_verified: Boolean = false
+}
+
+"Input for updating a review"
+input UpdateReviewInput {
+    rating: Float @rules(apply: ["numeric", "min:1", "max:5"])
+    comment: String @rules(apply: ["string", "min:10"])
+    service_type: String @rules(apply: ["string", "max:255"])
+}
+
+"Input for creating a review reply"
+input CreateReviewReplyInput {
+    review_id: ID!
+    user_name: String! @rules(apply: ["required", "string", "max:255"])
+    user_email: String! @rules(apply: ["required", "email", "max:255"])
+    comment: String! @rules(apply: ["required", "string", "min:10"])
+    is_prestataire_reply: Boolean = false
+}
+
+"Input for updating a review reply"
+input UpdateReviewReplyInput {
+    comment: String @rules(apply: ["string", "min:10"])
+}
+
+"Payload for review mutations"
+type ReviewPayload {
+    review: Review
+    message: String!
+    success: Boolean!
+}
+
+"Payload for review reply mutations"
+type ReviewReplyPayload {
+    reply: ReviewReply
+    message: String!
+    success: Boolean!
+}
+
+"Payload for delete mutations"
+type DeleteReviewPayload {
+    success: Boolean!
+    message: String!
+}
+
+"Payload for delete reply mutations"
+type DeleteReviewReplyPayload {
+    success: Boolean!
+    message: String!
+}
+
+"Order by clause for reviews"
+input ReviewOrderByClause {
+    column: ReviewOrderByColumn!
+    order: SortOrder!
+}
+
+"Columns for ordering reviews"
+enum ReviewOrderByColumn {
+    ID @enum(value: "id")
+    RATING @enum(value: "rating")
+    CREATED_AT @enum(value: "created_at")
+    HELPFUL_COUNT @enum(value: "helpful_count")
+}
+
+"Sort order"
+enum SortOrder {
+    ASC
+    DESC
+}
